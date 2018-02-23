@@ -1,2 +1,2 @@
-# sqlzoo-answer
-some sqlzoo study notes
+# sqlzoo note
+  Notes and ideas for recording SQL query language
