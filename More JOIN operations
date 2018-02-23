@@ -1,0 +1,112 @@
+# List the films where the yr is 1962 [Show id, title]
+  SELECT id, title
+   FROM movie
+   WHERE yr=1962
+ 
+# Give year of 'Citizen Kane'.
+  select yr from movie
+  where title like 'Citizen Kane'
+ 
+# List all of the Star Trek movies, include the id, title and yr . Order results by year.
+  select id,title,yr from movie
+  where title like ('%Star Trek%')
+  order by yr desc
+
+# What id number does the actor 'Glenn Close' have?
+  select id from actor where name like 'Glenn Close'
+
+# What is the id of the film 'Casablanca'
+  select id from movie where title like 'Casablanca'
+  
+# Obtain the cast list for 'Casablanca'.Use movieid=11768
+  select actor.name 
+  from actor join casting on id=actorid
+  where movieid=11768
+
+# Obtain the cast list for the film 'Alien'
+  select actor.name 
+  from actor join 
+                  (select casting.actorid from
+                   movie join casting on movie.id=movieid
+                   where title like 'Alien') as actorid
+              on actor.id=actorid
+
+# List the films in which 'Harrison Ford' has appeared
+  select movie.title as film
+  from movie join
+                (select casting.movieid 
+                 from casting join actor on casting.actorid=actor.id
+                 where actor.name like 'Harrison Ford')
+                 as movieid
+              on movie.id=movieid
+
+# List the films where 'Harrison Ford' has appeared - but not in the starring role.
+  select movie.title as film
+  from movie join
+                (select casting.movieid 
+                 from casting join actor on casting.actorid=actor.id
+                 where actor.name like 'Harrison Ford' 
+                       and ord!=1)
+                 as movieid
+              on movie.id=movieid
+
+# List the films together with the leading star for all 1962 films.
+  select movie.title,y.name
+  from movie join
+                  (select actor.name,x.movieid
+                    from actor join
+                                    (select casting.actorid as actorid,movieid
+                                     from casting join actor on casting.actorid=actor.id
+                                     where ord=1) as x
+                                on actor.id=x.actorid) as y
+              on movie.id=y.movieid
+
+# Which were the busiest years for 'John Travolta', show the year and the number of movies he made each year 
+# for any year in which he made more than 2 movies.
+  select yr,count(title) as num
+  from movie
+            join casting on movie.id=movieid 
+            join actor   on actorid=actor.id
+  where name='John Travolta'
+  group by yr
+  order by num desc
+  limit 1
+
+# List the film title and the leading actor for all of the films 'Julie Andrews' played in.
+  select movie.title, actor.name
+  from movie join casting on (movie.id = casting.movieid)
+             join actor on (actor.id = casting.actorid)
+  where casting.ord = 1
+  group by movie.id,movie.title,actor.name
+  having 
+        movie.id in (select movie.id from movie
+                     join casting on (movie.id = casting.movieid)
+                     join actor on (actor.id = casting.actorid)
+                     where actor.name = 'Julie Andrews')
+                     
+# Obtain a list, in alphabetical order, of actors who've had at least 30 starring roles.
+  select x.name 
+  from
+      (select actor.name,count(actor.name) as num
+       from actor join casting on actor.id=actorid
+       where casting.ord=1
+       group by actor.name) as x
+  where x.num>=30
+
+# List the films released in the year 1978 ordered by the number of actors in the cast, then by title.
+  select movie.title,count(actorid) as counts from movie join casting on movie.id=movieid
+  where yr=1978
+  group by movieid,movie.title
+  order by counts desc,movie.title
+
+# List all the people who have worked with 'Art Garfunkel'.
+  select distinct name 
+  from movie join casting on movie.id=movieid
+             join actor   on actorid=actor.id
+  where actor.name!='Art Garfunkel'
+  and movieid in
+                (select movieid
+                 from movie join casting on movie.id=movieid
+                            join actor   on actorid=actor.id
+                 where actor.name='Art Garfunkel')
+order by x.name
