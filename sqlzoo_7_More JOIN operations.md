@@ -49,11 +49,14 @@ This tutorial introduces the notion of a join. The database consists of three ta
     方法1：连接casting和movie，通过电影名称‘Alien’获取actorid的view，再将这个view与actor通过actorid连接，获得相应的演员名单
         
         select actor.name 
-        from actor join 
-                  (select casting.actorid from
-                   movie join casting on movie.id=movieid
-                   where title like 'Alien') as actorid
-        on actor.id=actorid
+        from actor join (
+                        select casting.actorid from
+                        movie join casting on movie.id=movieid
+                        where title like 'Alien'
+                        ) 
+                        as actorid
+                        on actor.id=actorid
+
     方法2：先获取‘Alien’的movieid，再在actor和casting连接的view中通过取得的movieid过滤出结果
         
         select actor.name
@@ -67,41 +70,51 @@ This tutorial introduces the notion of a join. The database consists of three ta
     方法1：原理与7类同
         
         select movie.title as film
-        from movie join
-                (select casting.movieid 
-                 from casting join actor on casting.actorid=actor.id
-                 where actor.name like 'Harrison Ford')
-                 as movieid
-              on movie.id=movieid
+        from movie join (
+                        select casting.movieid 
+                        from casting 
+                        join actor on casting.actorid=actor.id
+                        where actor.name like 'Harrison Ford'
+                        )
+                        as movieid
+                        on movie.id=movieid
   
     方法2：原理与7类同
     
         select movie.title
         from movie join casting on (movie.id = casting.movieid)
-        where casting.actorid = (select actor.id 
-                           from actor 
-                           where actor.name = 'Harrison Ford')
+        where casting.actorid = ( 
+                                select actor.id 
+                                from actor 
+                                where actor.name = 'Harrison Ford'
+                                )
   
 9. List the films where 'Harrison Ford' has appeared - but not in the starring role.
+    
     方法1：现将actor和casting连接，过去出满足条件的movieid的view，然后用movie与其连接，得到过滤后的结果
   
         select movie.title as film
-        from movie join
-                (select casting.movieid 
-                 from casting join actor on casting.actorid=actor.id
-                 where actor.name like 'Harrison Ford' 
-                       and ord!=1)
-                 as movieid
-              on movie.id=movieid
+        from movie join (
+                        select casting.movieid 
+                        from casting 
+                        join actor on casting.actorid=actor.id
+                        where actor.name like 'Harrison Ford' 
+                          and ord!=1
+                        )
+                        as movieid
+                    on movie.id=movieid
     
     方法2：直接连接movie和casting两个table，使用where过滤结果
     
         select movie.title
-        from movie join casting on (movie.id = casting.movieid)
-        where casting.actorid = (select actor.id 
-                           from actor 
-                           where actor.name = 'Harrison Ford')  
-             and  casting.ord <> 1
+        from movie 
+        join casting on (movie.id = casting.movieid)
+        where casting.actorid = (
+                                select actor.id 
+                                from actor 
+                                where actor.name = 'Harrison Ford'
+                                )  
+          and casting.ord <> 1
   
 10. List the films together with the leading star for all 1962 films.
     
@@ -111,21 +124,26 @@ This tutorial introduces the notion of a join. The database consists of three ta
     3 movie与2的view通过movieid连接，得到结果
   
         select movie.title,y.name
-        from movie join
-                  (select actor.name,x.movieid
-                    from actor join
-                                    (select casting.actorid as actorid,movieid
-                                     from casting join actor on casting.actorid=actor.id
-                                     where ord=1) as x
-                                on actor.id=x.actorid) as y
-              on movie.id=y.movieid
+        from movie join (
+                        select actor.name,x.movieid
+                        from actor join (
+                                        select casting.actorid as actorid,
+                                               movieid
+                                        from casting 
+                                        join actor on casting.actorid=actor.id
+                                        where ord=1
+                                        ) as x
+                                        on actor.id=x.actorid
+                                        ) as y
+                    on movie.id=y.movieid
         where yr=1962
     
     方法2：三个table通过相应的key连接，通过where过滤结果
 
-        select movie.title, actor.name
+        select  movie.title, 
+                actor.name
         from movie join casting on (movie.id = casting.movieid)
-        join actor on (actor.id = casting.actorid)
+                   join actor   on (actor.id = casting.actorid)
         where movie.yr = 1962 and casting.ord = 1
   
 11. Which were the busiest years for 'John Travolta', show the year and the number of movies he made each year for any year in which he made more than 2 movies.
@@ -133,9 +151,8 @@ This tutorial introduces the notion of a join. The database consists of three ta
     方法1：三个table连接，where过滤条件，聚合函数计算结果后降序排列，执行后发现只有一个大于2，则limit 1，符合要求
   
         select yr,count(title) as num
-        from movie
-            join casting on movie.id=movieid 
-            join actor   on actorid=actor.id
+        from movie  join casting on movie.id=movieid 
+                    join actor   on actorid=actor.id
         where name='John Travolta'
         group by yr
         order by num desc
@@ -143,16 +160,19 @@ This tutorial introduces the notion of a join. The database consists of three ta
 
     方法2：三个table连接，where过滤后，聚合函数计算出不同年份的电影数，再使用having过滤，取最大值，得到结果
     
-        select movie.yr, count(movie.id)
+        select movie.yr,
+               count(movie.id)
         from movie join casting on (movie.id = casting.movieid) 
-                     join actor on (actor.id = casting.actorid) 
+                   join actor   on (actor.id = casting.actorid) 
         where actor.name = 'John Travolta' 
         group by movie.yr
         having count(movie.id)>= all(
                                     select count(movie.id) 
                                     from movie 
-                                    join casting on (movie.id = casting.movieid) 
-                                    join actor   on (actor.id = casting.actorid) 
+                                    join casting 
+                                    on (movie.id = casting.movieid) 
+                                    join actor   
+                                    on (actor.id = casting.actorid) 
                                     where actor.name = 'John Travolta' 
                                     group by movie.yr
                                     )
