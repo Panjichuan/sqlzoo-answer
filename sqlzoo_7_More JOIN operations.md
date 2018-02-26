@@ -201,11 +201,11 @@ This tutorial introduces the notion of a join. The database consists of three ta
 
         select x.name 
         from (
-                select actor.name,
-                count(actor.name) as num
-                from actor join casting on actor.id=actorid
-                where casting.ord=1
-                group by actor.name
+              select actor.name,
+              count(actor.name) as num
+              from actor join casting on actor.id=actorid
+              where casting.ord=1
+              group by actor.name
              ) as x
         where x.num>=30
         order by x.name
